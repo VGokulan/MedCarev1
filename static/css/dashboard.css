@@ -1,0 +1,107 @@
+/* static/css/dashboard.css */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding-top: 1rem; /* Space below filters */
+}
+
+.chart-container {
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.chart-container.full-width {
+    grid-column: 1 / -1; /* Make this container span all columns */
+}
+
+.chart-header {
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.chart-header h2 {
+    color: var(--accent-color);
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.chart-header p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.chart-content {
+    flex-grow: 1;
+    position: relative;
+    min-height: 350px; /* Increased height for better visuals */
+}
+
+.roi-summary {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.roi-metric {
+    text-align: center;
+}
+
+.metric-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    font-size: 1.75rem; /* Larger font */
+    font-weight: 700;   /* Bolder */
+    color: var(--text-primary);
+}
+
+.metric-value.net-roi {
+    color: var(--success-color);
+}
+
+/* Loading spinner styles */
+.chart-content .loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border: 5px solid var(--border-color);
+    border-top: 5px solid var(--accent-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    transform: translate(-50%, -50%); /* Ensure it's centered */
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}

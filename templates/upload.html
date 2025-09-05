@@ -1,0 +1,373 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Upload Patient Data - Medical Dashboard{% endblock %}
+{% block page_title %}Upload Patient Data{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/upload.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Upload Header -->
+<div class="upload-header">
+    <div class="upload-title">
+        <h1>Medicare Risk Prediction</h1>
+        <p>Enter patient information to predict hospitalization and mortality risk</p>
+    </div>
+    <div class="upload-actions">
+        <button class="btn-secondary" onclick="resetForm()">
+            <i class="fas fa-undo"></i>
+            Reset Form
+        </button>
+        <button class="btn-primary" onclick="submitForm(event)">
+            <i class="fas fa-calculator"></i>
+            Predict Risk
+        </button>
+    </div>
+</div>
+
+<!-- Upload Form -->
+<form id="patientForm" class="upload-form">
+    <!-- Basic Information Section -->
+    <div class="form-section">
+        <h2><i class="fas fa-user"></i> Basic Information</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="patientId">Patient ID *</label>
+                <input type="text" id="patientId" name="DESYNPUF_ID" required placeholder="Enter patient ID">
+            </div>
+            <div class="form-group">
+                <label for="patientName">Patient Name *</label>
+                <input type="text" id="patientName" name="name" required placeholder="Enter patient name">
+            </div>
+            <div class="form-group">
+                <label for="age">Age *</label>
+                <input type="number" id="age" name="age" min="18" max="120" required placeholder="Enter age">
+            </div>
+            <div class="form-group">
+                <label for="gender">Gender *</label>
+                <select id="gender" name="gender_male" required>
+                    <option value="">Select gender</option>
+                    <option value="1">Male</option>
+                    <option value="0">Female</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Race Information Section -->
+    <div class="form-section">
+        <h2><i class="fas fa-globe"></i> Race Information</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="raceWhite">White</label>
+                <select id="raceWhite" name="race_white">
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="raceBlack">Black</label>
+                <select id="raceBlack" name="race_black">
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+            </div>
+        </div>
+        <p class="form-note">* Other race categories will be calculated automatically</p>
+    </div>
+
+    <!-- Chronic Conditions Section -->
+    <div class="form-section">
+        <h2><i class="fas fa-heartbeat"></i> Chronic Conditions</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="chronicCount">Chronic Condition Count *</label>
+                <input type="number" id="chronicCount" name="chronic_condition_count" min="0" max="20" required placeholder="Enter count">
+            </div>
+            <div class="form-group">
+                <label for="highImpactCount">High Impact Conditions Count *</label>
+                <input type="number" id="highImpactCount" name="high_impact_conditions" min="0" max="10" required placeholder="Enter count">
+            </div>
+        </div>
+        
+        <h3>Specific Conditions (Select all that apply)</h3>
+        <div class="conditions-grid">
+            <div class="condition-item">
+                <input type="checkbox" id="chf" name="SP_CHF" value="1">
+                <label for="chf">Congestive Heart Failure (CHF)</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="diabetes" name="SP_DIABETES" value="1">
+                <label for="diabetes">Diabetes</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="kidney" name="SP_CHRNKIDN" value="1">
+                <label for="kidney">Chronic Kidney Disease</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="cancer" name="SP_CNCR" value="1">
+                <label for="cancer">Cancer</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="copd" name="SP_COPD" value="1">
+                <label for="copd">COPD</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="depression" name="SP_DEPRESSN" value="1">
+                <label for="depression">Depression</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="heartDisease" name="SP_ISCHMCHT" value="1">
+                <label for="heartDisease">Ischemic Heart Disease</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="stroke" name="SP_STRKETIA" value="1">
+                <label for="stroke">Stroke</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="alzheimers" name="SP_ALZHDMTA" value="1">
+                <label for="alzheimers">Alzheimer's/Dementia</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="osteoporosis" name="SP_OSTEOPRS" value="1">
+                <label for="osteoporosis">Osteoporosis</label>
+            </div>
+            <div class="condition-item">
+                <input type="checkbox" id="arthritis" name="SP_RA_OA" value="1">
+                <label for="arthritis">Rheumatoid Arthritis/Osteoarthritis</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Healthcare Utilization Section -->
+    <div class="form-section">
+        <h2><i class="fas fa-hospital"></i> Healthcare Utilization</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="inpatientAdmissions">Inpatient Admissions *</label>
+                <input type="number" id="inpatientAdmissions" name="inpatient_admissions" min="0" max="50" required placeholder="Enter count">
+            </div>
+            <div class="form-group">
+                <label for="inpatientDays">Inpatient Days *</label>
+                <input type="number" id="inpatientDays" name="inpatient_days" min="0" max="365" required placeholder="Enter days">
+            </div>
+            <div class="form-group">
+                <label for="outpatientVisits">Outpatient Visits *</label>
+                <input type="number" id="outpatientVisits" name="outpatient_visits" min="0" max="200" required placeholder="Enter count">
+            </div>
+            <div class="form-group">
+                <label for="totalCosts">Total Medicare Costs ($) *</label>
+                <input type="number" id="totalCosts" name="total_medicare_costs" min="0" step="0.01" required placeholder="Enter amount">
+            </div>
+            <div class="form-group">
+                <label for="priorHospitalization">Prior Hospitalization</label>
+                <select id="priorHospitalization" name="prior_hospitalization">
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden fields for calculated values -->
+    <input type="hidden" name="age_65_74" value="0">
+    <input type="hidden" name="age_75_84" value="0">
+    <input type="hidden" name="age_85_plus" value="0">
+    <input type="hidden" name="race_other" value="0">
+    <input type="hidden" name="frequent_ed_user" value="0">
+    <input type="hidden" name="high_cost_patient" value="0">
+    <input type="hidden" name="MEDREIMB_IP" value="0">
+    <input type="hidden" name="MEDREIMB_OP" value="0">
+    <input type="hidden" name="MEDREIMB_CAR" value="0">
+</form>
+
+<!-- Results Section (Hidden by default) -->
+<div id="resultsSection" class="results-section" style="display: none;">
+    <h2><i class="fas fa-chart-line"></i> Prediction Results</h2>
+    <div class="results-grid">
+        <div class="result-card">
+            <h3>Risk Assessment</h3>
+            <div class="risk-tier" id="riskTier">
+                <span class="risk-label">Loading...</span>
+            </div>
+        </div>
+        <div class="result-card">
+            <h3>30-Day Hospitalization Risk</h3>
+            <div class="risk-percentage" id="risk30d">--</div>
+        </div>
+        <div class="result-card">
+            <h3>60-Day Hospitalization Risk</h3>
+            <div class="risk-percentage" id="risk60d">--</div>
+        </div>
+        <div class="result-card">
+            <h3>90-Day Hospitalization Risk</h3>
+            <div class="risk-percentage" id="risk90d">--</div>
+        </div>
+        <div class="result-card">
+            <h3>Mortality Risk</h3>
+            <div class="risk-percentage" id="mortalityRisk">--</div>
+        </div>
+        <div class="result-card">
+            <h3>Care Intervention</h3>
+            <div class="intervention-info" id="careIntervention">--</div>
+        </div>
+    </div>
+    
+    <div class="intervention-details">
+        <h3>Intervention Details</h3>
+        <div class="intervention-grid">
+            <div class="intervention-item">
+                <span class="label">Annual Intervention Cost:</span>
+                <span class="value" id="interventionCost">--</span>
+            </div>
+            <div class="intervention-item">
+                <span class="label">Potential Cost Savings:</span>
+                <span class="value" id="costSavings">--</span>
+            </div>
+            <div class="intervention-item">
+                <span class="label">Prevented Hospitalizations:</span>
+                <span class="value" id="preventedHosp">--</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Indicator -->
+<div id="loadingIndicator" class="loading-indicator" style="display: none;">
+    <div class="loading-spinner"></div>
+    <p>Processing prediction...</p>
+</div>
+
+<!-- Notification Container -->
+<div id="notificationContainer" class="notification-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Form submission
+    async function submitForm(event) {
+        event.preventDefault();
+        
+        const form = document.getElementById('patientForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        // Show loading indicator
+        document.getElementById('loadingIndicator').style.display = 'flex';
+        document.getElementById('resultsSection').style.display = 'none';
+
+        try {
+            // Calculate derived fields
+            calculateDerivedFields();
+
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            const response = await fetch('/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(data)
+            });
+            
+            const results = await response.json();
+            
+            if (response.ok) {
+                showResults(results);
+                showNotification('Prediction completed successfully!', 'success');
+            } else {
+                throw new Error(results.error || 'Prediction failed');
+            }
+        } catch (error) {
+            showNotification(error.message, 'error');
+        } finally {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+    }
+
+    function calculateDerivedFields() {
+        const age = parseInt(document.getElementById("age").value) || 0;
+        const outpatientVisits = parseInt(document.getElementById("outpatientVisits").value) || 0;
+        const totalCosts = parseFloat(document.getElementById("totalCosts").value) || 0;
+        
+        // Age categories
+        document.querySelector("input[name=\"age_65_74\"]").value = (65 <= age && age <= 74) ? 1 : 0;
+        document.querySelector("input[name=\"age_75_84\"]").value = (75 <= age && age <= 84) ? 1 : 0;
+        document.querySelector("input[name=\"age_85_plus\"]").value = (age >= 85) ? 1 : 0;
+        
+        // Race other
+        const raceWhite = parseInt(document.getElementById("raceWhite").value) || 0;
+        const raceBlack = parseInt(document.getElementById("raceBlack").value) || 0;
+        document.querySelector("input[name=\"race_other\"]").value = (raceWhite === 0 && raceBlack === 0) ? 1 : 0;
+        
+        // Frequent ED user
+        document.querySelector("input[name=\"frequent_ed_user\"]").value = (outpatientVisits > 10) ? 1 : 0;
+        
+        // High cost patient
+        document.querySelector("input[name=\"high_cost_patient\"]").value = (totalCosts > 15000) ? 1 : 0;
+        
+        // Reimbursement estimates
+        const inpatientDays = parseInt(document.getElementById("inpatientDays").value) || 0;
+        document.querySelector("input[name=\"MEDREIMB_IP\"]").value = inpatientDays * 1000;
+        document.querySelector("input[name=\"MEDREIMB_OP\"]").value = totalCosts * 0.4;
+        document.querySelector("input[name=\"MEDREIMB_CAR\"]").value = totalCosts * 0.3;
+    }
+
+    function showResults(results) {
+        // Update UI with actual results from server
+        document.getElementById("riskTier").innerHTML = `<span class="risk-label tier-${results.risk_tier}">${results.risk_tier_label}</span>`;
+        document.getElementById("risk30d").textContent = `${(results.risk_30d_hospitalization * 100).toFixed(1)}%`;
+        document.getElementById("risk60d").textContent = `${(results.risk_60d_hospitalization * 100).toFixed(1)}%`;
+        document.getElementById("risk90d").textContent = `${(results.risk_90d_hospitalization * 100).toFixed(1)}%`;
+        document.getElementById("mortalityRisk").textContent = `${(results.mortality_risk * 100).toFixed(1)}%`;
+        document.getElementById("careIntervention").textContent = results.care_intervention || "Enhanced Monitoring";
+        document.getElementById("interventionCost").textContent = `$${results.annual_intervention_cost || 400}`;
+        document.getElementById("costSavings").textContent = `$${results.cost_savings || 1200}`;
+        document.getElementById("preventedHosp").textContent = (results.prevented_hospitalizations || 0.15).toFixed(2);
+
+        // Show results section
+        document.getElementById("resultsSection").style.display = "block";
+    }
+
+    function resetForm() {
+        document.getElementById("patientForm").reset();
+        document.getElementById("resultsSection").style.display = "none";
+        showNotification("Form reset successfully!", "info");
+    }
+
+    function showNotification(message, type = "info") {
+        const container = document.getElementById("notificationContainer");
+        const notification = document.createElement("div");
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === "success" ? "check-circle" : type === "error" ? "exclamation-circle" : "info-circle"}"></i>
+            <span>${message}</span>
+            <button onclick="this.parentElement.remove()">&times;</button>
+        `;
+        
+        container.appendChild(notification);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    // Form validation
+    document.getElementById("patientForm").addEventListener("input", function(e) {
+        if (e.target.hasAttribute("required") && e.target.value.trim() === "") {
+            e.target.classList.add("invalid");
+        } else {
+            e.target.classList.remove("invalid");
+        }
+    });
+
+    // Update button onclick to pass event
+    document.querySelector('.btn-primary').onclick = submitForm;
+</script>
+{% endblock %}

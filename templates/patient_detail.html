@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Details - {{ patient.get('name', 'Unknown') }}{% endblock %}
+{% block page_title %}Patient Profile{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/patient_detail.css') }}">
+<!-- Add marked.js for markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="patient-detail-container">
+    <!-- Patient Header -->
+    <div class="patient-header">
+        <div class="patient-info">
+            <div class="patient-avatar">
+                {{ patient.get('name', 'U')[0] }}
+            </div>
+            <div class="patient-summary">
+                <h1>{{ patient.get('name', 'Unknown Patient') }}</h1>
+                <p>
+                    {{ patient.get('age', 'N/A') }} years old {{ patient.get('gender', 'N/A') }}
+                    <span class="separator">|</span>
+                    ID: {{ patient.get('desynpuf_id', 'N/A')[:8] }}
+                </p>
+            </div>
+        </div>
+        <div class="patient-risk-tier">
+            <span class="risk-tier-label">Risk Tier</span>
+            <div class="risk-tier-value tier-{{ patient.get('risk_tier', 1) }}">
+                {{ patient.get('risk_tier', 'N/A') }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+        <!-- Left Column: Charts -->
+        <div class="left-column">
+            <!-- Hospitalization Risk Chart -->
+            <div class="chart-card">
+                <h3>Hospitalization Risk</h3>
+                <canvas id="riskProgressionChart"></canvas>
+            </div>
+            <!-- Conditional Risk Chart -->
+            <div class="chart-card">
+                <h3>Conditional Risk Factors</h3>
+                <div id="conditionalRiskContainer">
+                    <canvas id="conditionalRiskChart"></canvas>
+                </div>
+                <div id="conditionalRiskMessage" style="display: none; text-align: center; padding: 20px; color: var(--text-muted);">
+                    No specific condition impact data available.
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Details & Analysis -->
+        <div class="right-column">
+            <!-- Financial Analysis Cards -->
+            <div class="card-group-title">Financial Analysis</div>
+            <div class="financial-cards-container">
+                <div class="info-card">
+                    <h4>Total Medicare Costs</h4>
+                    <p>${{ "{:,.2f}".format(patient.get('total_medicare_costs', 0)) }}</p>
+                </div>
+                <div class="info-card">
+                    <h4>Potential Savings</h4>
+                    <p>${{ "{:,.2f}".format(patient.get('cost_savings', 0)) }}</p>
+                </div>
+                <div class="info-card">
+                    <h4>Intervention Cost</h4>
+                    <p>${{ "{:,.2f}".format(patient.get('annual_intervention_cost', 0)) }}</p>
+                </div>
+            </div>
+
+             <!-- AI Generated Summary -->
+            <div class="summary-card">
+                <h3>AI Generated Summary</h3>
+                <p id="aiSummaryText">Generating AI summary...</p>
+                <!-- MODIFIED: "Review & Send Plan" Button -->
+                <div class="intervention-actions">
+                    <button id="reviewInterventionBtn">
+                        <i class="fas fa-file-alt"></i> Review & Send Plan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Intervention Plan Modal -->
+    <div id="interventionModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h3>Review Intervention Plan</h3>
+                <span id="closeInterventionModal" class="close-btn">&times;</span>
+            </div>
+            <div class="custom-modal-body">
+                <div class="form-group">
+                    <label for="recipientEmail">Recipient Email</label>
+                    <input type="email" id="recipientEmail" placeholder="Enter patient's email address">
+                </div>
+                <div class="form-group">
+                    <label for="interventionText">Plan Details (Editable)</label>
+                    <textarea id="interventionText" rows="15" placeholder="Generating plan..."></textarea>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button id="cancelSendBtn" class="btn-secondary">Cancel</button>
+                <button id="confirmSendBtn" class="btn-primary">
+                    <i class="fas fa-paper-plane"></i> Send Plan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chatbot FAB and Modal -->
+<div id="chatFab" class="chat-fab">
+    <i class="fas fa-robot"></i>
+</div>
+<div id="chatModal" class="chat-modal">
+    <div class="chat-modal-header">
+        <h3>AI Assistant</h3>
+        <button id="closeChat" class="close-chat-btn">&times;</button>
+    </div>
+    <div id="chatMessages" class="chat-modal-body"></div>
+    <div class="chat-modal-footer">
+        <input type="text" id="chatInput" placeholder="Ask a question...">
+        <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const patientData = {{ patient | tojson }};
+
+    // --- Chart Initializations ---
+    const riskProgressionCtx = document.getElementById('riskProgressionChart').getContext('2d');
+    new Chart(riskProgressionCtx, { type: 'bar', data: { labels: ['30-Day', '60-Day', '90-Day'], datasets: [{ label: 'Hospitalization Risk', data: [ patientData.risk_30d_hospitalization || 0, patientData.risk_60d_hospitalization || 0, patientData.risk_90d_hospitalization || 0 ], backgroundColor: ['rgba(255, 205, 86, 0.6)', 'rgba(255, 159, 64, 0.6)', 'rgba(255, 99, 132, 0.6)'], borderColor: ['rgb(255, 205, 86)', 'rgb(255, 159, 64)', 'rgb(255, 99, 132)'], borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0, ticks: { callback: value => (value * 100).toFixed(0) + '%' } } }, plugins: { legend: { display: false } } } });
+    const conditionalRiskCtx = document.getElementById('conditionalRiskChart').getContext('2d');
+    const conditionalRiskChart = new Chart(conditionalRiskCtx, { type: 'radar', data: { labels: [], datasets: [{ label: 'Risk Contribution (%)', data: [], backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.8)', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, suggestedMax: 50, pointLabels: { font: { size: 11 } } } }, plugins: { legend: { display: false } } } });
+    fetch(`/api/conditional_risk/${patientData.desynpuf_id}`).then(response => response.json()).then(data => { if (data && Object.keys(data).length > 0) { conditionalRiskChart.data.labels = Object.keys(data); conditionalRiskChart.data.datasets[0].data = Object.values(data); conditionalRiskChart.update(); } else { document.getElementById('conditionalRiskContainer').style.display = 'none'; document.getElementById('conditionalRiskMessage').style.display = 'block'; } }).catch(error => { console.error('Error fetching conditional risk data:', error); document.getElementById('conditionalRiskContainer').style.display = 'none'; document.getElementById('conditionalRiskMessage').style.display = 'block'; document.getElementById('conditionalRiskMessage').textContent = 'Error loading data.'; });
+
+    // --- Fetch AI Summary ---
+    const aiSummaryText = document.getElementById('aiSummaryText');
+    fetch(`/api/ai_summary/${patientData.desynpuf_id}`).then(response => response.json()).then(data => { aiSummaryText.innerHTML = marked.parse(data.summary || 'Could not generate AI summary.'); }).catch(error => { console.error('Error fetching AI summary:', error); aiSummaryText.textContent = 'Failed to load AI summary.'; });
+
+    // --- Chatbot Functionality ---
+    const chatFab = document.getElementById('chatFab');
+    const chatModal = document.getElementById('chatModal');
+    const closeChatBtn = document.getElementById('closeChat');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const chatMessages = document.getElementById('chatMessages');
+
+    chatFab.addEventListener('click', () => chatModal.classList.add('active'));
+    closeChatBtn.addEventListener('click', () => chatModal.classList.remove('active'));
+
+    const addMessage = (text, sender) => {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-message', `${sender}-message`);
+        messageDiv.innerHTML = marked.parse(text); // Use marked to render markdown
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    const handleSendMessage = async () => {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        addMessage(message, 'user');
+        chatInput.value = '';
+
+        try {
+            const response = await fetch('/api/chatbot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ patient_id: patientData.desynpuf_id, message: message })
+            });
+            const data = await response.json();
+            addMessage(data.response, 'bot');
+        } catch (error) {
+            console.error('Chatbot error:', error);
+            addMessage('Sorry, I am having trouble connecting. Please try again.', 'bot');
+        }
+    };
+    sendChatBtn.addEventListener('click', handleSendMessage);
+    chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
+
+
+    // --- Intervention Plan Modal Functionality ---
+    const reviewInterventionBtn = document.getElementById('reviewInterventionBtn');
+    const interventionModal = document.getElementById('interventionModal');
+    const closeInterventionModal = document.getElementById('closeInterventionModal');
+    const cancelSendBtn = document.getElementById('cancelSendBtn');
+    const confirmSendBtn = document.getElementById('confirmSendBtn');
+    const interventionText = document.getElementById('interventionText');
+    const recipientEmail = document.getElementById('recipientEmail');
+
+    // Show modal and fetch plan text
+    reviewInterventionBtn.addEventListener('click', async () => {
+        interventionModal.style.display = 'flex';
+        interventionText.value = 'Generating plan...';
+        reviewInterventionBtn.disabled = true;
+        reviewInterventionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+        try {
+            const response = await fetch(`/api/generate_intervention_text/${patientData.desynpuf_id}`);
+            const result = await response.json();
+            if (response.ok) {
+                interventionText.value = result.plan_text;
+            } else {
+                interventionText.value = `Error: ${result.error || 'Could not generate plan.'}`;
+            }
+        } catch (error) {
+            console.error('Failed to generate plan text:', error);
+            interventionText.value = 'A network error occurred while generating the plan.';
+        } finally {
+             reviewInterventionBtn.disabled = false;
+             reviewInterventionBtn.innerHTML = '<i class="fas fa-file-alt"></i> Review & Send Plan';
+        }
+    });
+
+    // Hide modal function
+    const closeModal = () => {
+        interventionModal.style.display = 'none';
+    };
+    closeInterventionModal.addEventListener('click', closeModal);
+    cancelSendBtn.addEventListener('click', closeModal);
+    window.addEventListener('click', (event) => {
+        if (event.target == interventionModal) {
+            closeModal();
+        }
+    });
+
+    // Confirm and Send email with PDF
+    confirmSendBtn.addEventListener('click', async () => {
+        const email = recipientEmail.value;
+        const planText = interventionText.value;
+
+        if (!email) {
+            showNotification("Please enter the recipient's email address.", "error");
+            return;
+        }
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            showNotification('Invalid email address format.', "error");
+            return;
+        }
+        if (!planText || planText.startsWith('Error:')) {
+            showNotification('Cannot send an empty or erroneous plan.', "error");
+            return;
+        }
+
+        confirmSendBtn.disabled = true;
+        confirmSendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+        try {
+            const response = await fetch(`/api/send_intervention/${patientData.desynpuf_id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, plan_text: planText })
+            });
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                showNotification(result.message, "success");
+                closeModal();
+            } else {
+                showNotification(`Error: ${result.error || 'Unknown server error'}`, "error");
+            }
+        } catch (error) {
+            console.error('Failed to send intervention plan:', error);
+            showNotification('A network error occurred. Please try again.', "error");
+        } finally {
+            confirmSendBtn.disabled = false;
+            confirmSendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Plan';
+        }
+    });
+    
+    // Simple Notification Function
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.remove();
+        }, 4000);
+    }
+});
+</script>
+{% endblock %}
