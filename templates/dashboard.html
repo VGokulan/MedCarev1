@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-color: #4361ee;
+            --border-color: #dee2e6;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            --success-color: #2ecc71;
+        }
+
+        body.dark-theme {
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+            --border-color: #2d2d2d;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            width: 50px;
+            height: 24px;
+            background-color: #ccc;
+            border-radius: 12px;
+            position: relative;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        body.dark-theme .toggle-switch {
+            background-color: var(--accent-color);
+        }
+
+        body.dark-theme .toggle-slider {
+            transform: translateX(26px);
+        }
+
+        .filters-section {
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .filter-group select {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .chart-container {
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .chart-container.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-header {
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .chart-header h2 {
+            color: var(--accent-color);
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .chart-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .chart-content {
+            flex-grow: 1;
+            position: relative;
+            min-height: 350px;
+        }
+
+        .roi-summary {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .roi-metric {
+            text-align: center;
+        }
+
+        .metric-label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .metric-value.net-roi {
+            color: var(--success-color);
+        }
+
+        .chart-content .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            border: 5px solid var(--border-color);
+            border-top: 5px solid var(--accent-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .apply-filters-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            transition: background-color 0.3s;
+        }
+
+        .apply-filters-btn:hover {
+            background-color: #3651d3;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Analytics Dashboard</h1>
+        <div class="theme-toggle" id="themeToggle">
+            <i class="fas fa-sun"></i>
+            <div class="toggle-switch">
+                <div class="toggle-slider"></div>
+            </div>
+            <i class="fas fa-moon"></i>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label for="riskFilter">Filter by Risk Tier</label>
+                <select id="riskFilter" name="risk_tier">
+                    <option value="">All Risk Tiers</option>
+                    <option value="1">Tier 1</option>
+                    <option value="2">Tier 2</option>
+                    <option value="3">Tier 3</option>
+                    <option value="4">Tier 4</option>
+                    <option value="5">Tier 5</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="ageFilter">Filter by Age Range</label>
+                <select id="ageFilter" name="age_range">
+                    <option value="">All Ages</option>
+                    <option value="18-30">18-30</option>
+                    <option value="31-50">31-50</option>
+                    <option value="51-70">51-70</option>
+                    <option value="70+">70+</option>
+                </select>
+            </div>
+        </div>
+        <button class="apply-filters-btn" id="applyFilters">Apply Filters</button>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Chart 1: Risk Scoring Over Time -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h2>Risk Scoring Over Time</h2>
+                <p>Average hospitalization risk scores for the selected patient group.</p>
+            </div>
+            <div class="chart-content">
+                <canvas id="riskScoringChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Patient Distribution -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h2>Patient Distribution by Risk Tier</h2>
+                <p>Distribution of patients across risk tiers (filtered by age).</p>
+            </div>
+            <div class="chart-content">
+                <canvas id="riskTierChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 3: Intervention ROI -->
+        <div class="chart-container full-width">
+            <div class="chart-header">
+                <h2>Intervention ROI Tracking</h2>
+                <p>Aggregated cost savings versus intervention costs for the selected group.</p>
+            </div>
+            <div class="chart-content">
+                <canvas id="roiChart"></canvas>
+            </div>
+            <div class="roi-summary">
+                <div class="roi-metric">
+                    <span class="metric-label">Projected Savings</span>
+                    <span class="metric-value" id="totalSavings">$0</span>
+                </div>
+                <div class="roi-metric">
+                    <span class="metric-label">Intervention Costs</span>
+                    <span class="metric-value" id="totalCosts">$0</span>
+                </div>
+                <div class="roi-metric">
+                    <span class="metric-label">Net Return on Investment</span>
+                    <span class="metric-value net-roi" id="netRoi">$0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to hold chart instances
+        let riskScoringChart, riskTierChart, roiChart;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Register the datalabels plugin globally
+            Chart.register(ChartDataLabels);
+
+            // Initial chart rendering
+            updateDashboard();
+
+            // Add event listeners to filters for reactivity
+            document.getElementById('applyFilters').addEventListener('click', updateDashboard);
+            
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('dark-theme');
+                    // Delay to allow CSS variables to update before redrawing
+                    setTimeout(updateDashboard, 100);
+                });
+            }
+        });
+
+        /**
+         * Reads CSS variables to make chart colors theme-aware.
+         * @returns {object} An object with color values for charts.
+         */
+        function getThemeColors() {
+            const styles = getComputedStyle(document.documentElement);
+            return {
+                primary: styles.getPropertyValue('--text-primary').trim(),
+                secondary: styles.getPropertyValue('--text-secondary').trim(),
+                border: styles.getPropertyValue('--border-color').trim(),
+                accent: styles.getPropertyValue('--accent-color').trim(),
+                background: styles.getPropertyValue('--bg-secondary').trim(),
+                riskTiers: {
+                    tier1: '#10b981', tier2: '#22c55e', tier3: '#f59e0b',
+                    tier4: '#f97316', tier5: '#ef4444'
+                },
+                roi: { savings: '#10b981', costs: '#ef4444' }
+            };
+        }
+
+        /**
+         * Creates a baseline configuration for all charts.
+         * @param {object} colors - The theme colors object.
+         * @returns {object} A Chart.js options object.
+         */
+        function getCommonChartOptions(colors) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: colors.primary, font: { size: 12 } }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 12 },
+                        padding: 10, cornerRadius: 4, displayColors: false
+                    },
+                    datalabels: {
+                        color: '#ffffff',
+                        font: { weight: 'bold' },
+                        formatter: (value) => (value !== 0 ? Math.round(value * 100) / 100 : '')
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.secondary }, grid: { color: colors.border } },
+                    y: { ticks: { color: colors.secondary }, grid: { color: colors.border } }
+                },
+                animation: { duration: 800, easing: 'easeInOutQuart' }
+            };
+        }
+
+        /**
+         * Displays a loading spinner inside a chart's container.
+         * @param {string} chartId - The ID of the canvas element.
+         */
+        function showLoader(chartId) {
+            const chartContent = document.getElementById(chartId).parentElement;
+            if (chartContent.querySelector('.loader')) return; // Loader already exists
+            const loader = document.createElement('div');
+            loader.className = 'loader';
+            chartContent.appendChild(loader);
+        }
+
+        /**
+         * Removes the loading spinner from a chart's container.
+         * @param {string} chartId - The ID of the canvas element.
+         */
+        function hideLoader(chartId) {
+            const chartContent = document.getElementById(chartId).parentElement;
+            const loader = chartContent.querySelector('.loader');
+            if (loader) loader.remove();
+        }
+
+        /**
+         * Main function to fetch data and update all charts based on filters.
+         */
+        async function updateDashboard() {
+            const riskTier = document.getElementById('riskFilter').value;
+            const ageRange = document.getElementById('ageFilter').value;
+            
+            // In a real application, you would fetch this from your API
+            // For this demo, we'll use mock data
+            const mockData = generateMockData(riskTier, ageRange);
+
+            const chartIds = ['riskScoringChart', 'riskTierChart', 'roiChart'];
+            chartIds.forEach(showLoader);
+
+            try {
+                // Simulate API call delay
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                // Destroy existing charts to prevent rendering issues
+                if (riskScoringChart) riskScoringChart.destroy();
+                if (riskTierChart) riskTierChart.destroy();
+                if (roiChart) roiChart.destroy();
+
+                const colors = getThemeColors();
+                const commonOptions = getCommonChartOptions(colors);
+
+                createRiskScoringChart(mockData.risk_scores, commonOptions, colors);
+                createRiskTierChart(mockData.risk_tier_distribution, commonOptions, colors);
+                createRoiChart(mockData.intervention_roi, commonOptions, colors);
+                updateRoiSummary(mockData.intervention_roi);
+
+            } catch (error) {
+                console.error("Failed to update dashboard:", error);
+            } finally {
+                chartIds.forEach(hideLoader);
+            }
+        }
+
+        /**
+         * Generates mock data based on selected filters
+         */
+        function generateMockData(riskTier, ageRange) {
+            // Base data structure
+            const data = {
+                risk_scores: {
+                    avg_30d: 0.25,
+                    avg_60d: 0.32,
+                    avg_90d: 0.45
+                },
+                risk_tier_distribution: [
+                    { risk_tier: 1, count: 120 },
+                    { risk_tier: 2, count: 85 },
+                    { risk_tier: 3, count: 60 },
+                    { risk_tier: 4, count: 35 },
+                    { risk_tier: 5, count: 20 }
+                ],
+                intervention_roi: {
+                    total_costs: 125000,
+                    total_savings: 325000
+                }
+            };
+            
+            // Adjust data based on filters
+            if (riskTier) {
+                // Filter risk tier distribution to show only selected tier
+                const selectedTier = parseInt(riskTier);
+                data.risk_tier_distribution = data.risk_tier_distribution.filter(t => t.risk_tier === selectedTier);
+                
+                // Adjust risk scores based on tier
+                const tierMultiplier = 0.1 * selectedTier;
+                data.risk_scores.avg_30d = 0.15 + (0.1 * tierMultiplier);
+                data.risk_scores.avg_60d = 0.22 + (0.1 * tierMultiplier);
+                data.risk_scores.avg_90d = 0.35 + (0.1 * tierMultiplier);
+                
+                // Adjust ROI based on tier
+                data.intervention_roi.total_costs = 100000 + (25000 * selectedTier);
+                data.intervention_roi.total_savings = 200000 + (125000 * selectedTier);
+            }
+            
+            if (ageRange) {
+                // Adjust counts based on age range
+                const ageMultipliers = {
+                    '18-30': 0.8,
+                    '31-50': 1.0,
+                    '51-70': 1.2,
+                    '70+': 1.5
+                };
+                
+                const multiplier = ageMultipliers[ageRange] || 1.0;
+                data.risk_tier_distribution = data.risk_tier_distribution.map(t => ({
+                    risk_tier: t.risk_tier,
+                    count: Math.round(t.count * multiplier)
+                }));
+                
+                // Adjust risk scores based on age
+                const ageRiskMultipliers = {
+                    '18-30': 0.7,
+                    '31-50': 0.9,
+                    '51-70': 1.1,
+                    '70+': 1.4
+                };
+                
+                const riskMultiplier = ageRiskMultipliers[ageRange] || 1.0;
+                data.risk_scores.avg_30d *= riskMultiplier;
+                data.risk_scores.avg_60d *= riskMultiplier;
+                data.risk_scores.avg_90d *= riskMultiplier;
+                
+                // Adjust ROI based on age
+                data.intervention_roi.total_costs *= multiplier;
+                data.intervention_roi.total_savings *= (multiplier * riskMultiplier);
+            }
+            
+            return data;
+        }
+
+        function createRiskScoringChart(data, options, colors) {
+            const ctx = document.getElementById('riskScoringChart').getContext('2d');
+            riskScoringChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['30-Day Risk', '60-Day Risk', '90-Day Risk'],
+                    datasets: [{
+                        label: 'Avg. Hospitalization Risk',
+                        data: [data.avg_30d, data.avg_60d, data.avg_90d],
+                        backgroundColor: [colors.accent, colors.riskTiers.tier3, colors.riskTiers.tier5],
+                        borderColor: colors.background, borderWidth: 2, borderRadius: 5
+                    }]
+                },
+                options: {
+                    ...options,
+                    plugins: { ...options.plugins,
+                        datalabels: { ...options.plugins.datalabels,
+                             formatter: (value) => value > 0 ? `${(value * 100).toFixed(1)}%` : '',
+                             anchor: 'end', align: 'top', color: colors.primary
+                        },
+                        tooltip: { ...options.plugins.tooltip, callbacks: {
+                                label: (c) => `Avg. Risk: ${(c.raw * 100).toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: { ...options.scales,
+                        y: { ...options.scales.y, beginAtZero: true, title: { display: true, text: 'Average Risk Score', color: colors.secondary },
+                            ticks: { callback: value => `${(value * 100).toFixed(0)}%` }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRiskTierChart(data, options, colors) {
+            const ctx = document.getElementById('riskTierChart').getContext('2d');
+            riskTierChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(item => `Tier ${item.risk_tier}`),
+                    datasets: [{
+                        label: 'Patients',
+                        data: data.map(item => item.count),
+                        backgroundColor: Object.values(colors.riskTiers),
+                        borderColor: colors.background, borderWidth: 4, hoverOffset: 10
+                    }]
+                },
+                options: { ...options, cutout: '60%',
+                    plugins: { ...options.plugins,
+                         datalabels: { ...options.plugins.datalabels,
+                             formatter: (value, context) => {
+                                 const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                 return total > 0 ? `${((value / total) * 100).toFixed(1)}%` : '0%';
+                             }
+                         },
+                         tooltip: { ...options.plugins.tooltip, callbacks: {
+                                label: (c) => `${c.label}: ${c.raw.toLocaleString()} patients`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRoiChart(data, options, colors) {
+            const ctx = document.getElementById('roiChart').getContext('2d');
+            roiChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Projected Savings vs. Costs'],
+                    datasets: [
+                        { label: 'Projected Savings', data: [data.total_savings], backgroundColor: colors.roi.savings, borderWidth: 0, borderRadius: 5 },
+                        { label: 'Intervention Costs', data: [data.total_costs], backgroundColor: colors.roi.costs, borderWidth: 0, borderRadius: 5 }
+                    ]
+                },
+                options: { ...options, indexAxis: 'y',
+                     plugins: { ...options.plugins,
+                        datalabels: { ...options.plugins.datalabels, formatter: (v) => v > 0 ? `$${(v / 1000).toFixed(1)}k` : '' },
+                        tooltip: { ...options.plugins.tooltip, callbacks: {
+                                label: (c) => `${c.dataset.label}: $${Math.round(c.raw).toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ...options.scales.x, title: { display: true, text: 'Amount (USD)', color: colors.secondary },
+                            ticks: { callback: value => `$${value / 1000}k` }
+                        },
+                        y: { ...options.scales.y, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function updateRoiSummary(data) {
+            const formatCurrency = (value) => {
+                if (!value) return '$0';
+                if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
+                if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(1)}k`;
+                return `$${Math.round(value)}`;
+            };
+            
+            document.getElementById('totalSavings').textContent = formatCurrency(data.total_savings);
+            document.getElementById('totalCosts').textContent = formatCurrency(data.total_costs);
+            document.getElementById('netRoi').textContent = formatCurrency(data.total_savings - data.total_costs);
+        }
+    </script>
+</body>
+</html>
